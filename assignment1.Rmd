@@ -1,0 +1,227 @@
+---
+title: "Assignment1"
+author: "Regina Crespo Lopez Oliver (20000322-T884) & Malin Mueller (20011115-T460)"
+date: "2024-09-27"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## R Markdown
+
+```{r}
+# Byt ÅÅMMDD mot ditt födelsedatum 
+set.seed(011115) # - Malin
+# set.seed(000322) # - Regina
+```
+
+## Task 1
+
+```{r}
+load("proj_data.Rdata")
+modell <- glm(Resultat ~ Alder + Kon + Utbildare, 
+              data = data_individ,
+              family = "binomial")
+summary(modell)
+```
+
+
+```{r}
+y <- matrix(data_individ$Resultat, ncol = 1)
+X <- model.matrix(Resultat ~ Alder + Kon + Utbildare, 
+                  data = data_individ)
+head(X)
+```
+
+
+```{r}
+head(data_individ[, -1])
+```
+## Extra : Data visualization
+```{r}
+library(ggplot2)
+
+# x_true <- X[y == TRUE,]
+
+ggplot(X, aes(X[,"Alder"], colour = y)) +
+  
+  geom_histogram(bins = 32)  +
+  ggtitle("Distribution of driving test success by age")
+```
+From the graph we can see that most applicants to the test are younger. There
+is always a high chance of failure in each age group.
+
+## Task 2
+```{r, code = readLines("funktioner.R")}
+source("funktioner.R")
+```
+
+```{r}
+theta0 <- c(0, 0, 0, 0)
+NR_estimate <- NR(theta0, 5, y, X)
+
+print(NR_estimate)
+```
+
+
+```{r}
+# Function to compute the number of iterations for two-digit accuracy
+find_niter_NR <- function(theta0, y, X, tol = 1e-2) {
+  
+  glm_coef <- coef(modell)  # Extract coefficients from glm
+  
+  # Initial guess for niter and starting point for NR
+  niter <- 1
+  max_iter <- 10  # Set a maximum number of iterations, 
+  # prevents from looping forever
+
+  # Loop until the difference between NR and glm is within 2 digits (tol = 1e-2)
+  while (niter <= max_iter) {
+    theta_NR <- NR(theta0, niter, y, X)
+    
+    # check the match
+    if (all(abs(round(theta_NR, 2) - round(glm_coef, 2)) < tol)) {
+      return(niter)  # Return the number of iterations needed
+    }
+    
+    # Increase iteration count
+    niter <- niter + 1
+  }
+  
+  # If max_iter is reached and no convergence, return a message
+  return(paste("Did not converge within", max_iter, "iterations"))
+}
+
+
+# Starting value for theta0 (initial guess for NR)
+theta0 <- c(0, 0, 0, 0)
+
+# Find the number of iterations needed for NR to match glm's estimates within two digits
+niter_needed <- find_niter_NR(theta0, y, X)
+print(niter_needed)
+```
+The number of iterations needed is 2.
+
+## Task 3
+
+Approximate standard error of our estimate:
+
+```{r}
+
+I_mat = I(NR_estimate, y, X) # first obtain the fisher information
+inv_I = diag(solve(I_mat)) #diagonal of the elements of the inverse fisher info.
+NR_error = sqrt(inv_I) # then we obtain the square root
+NR_error
+
+```
+Standard error given by R:
+```{r}
+summary(modell)$coefficients[,"Std. Error"]
+```
+The standard error given by R is very close to that of our approximation, indicating that R may be using the same method as us.
+
+The following computation is made to shown the difference between our approximation and that 
+made by R.
+```{r}
+abs(NR_error - summary(modell)$coefficients[,"Std. Error"])
+```
+
+
+## Task 4
+
+```{r}
+parametric_bootstrap <- function(X, y, n_bootstrap = 1000) {
+  # the parametric bootstrap function takes new samples of x from the original modell
+  # to create new yi´s (resultat) and draw thetahat estiamtes from that
+  # finally, after n bootstrap runs, we take the standard deviations for each theta
+  
+  n <- length(y)
+  theta_hat <- coef(modell)  # estimates from glm
+  prob_hat <- p_var(theta_hat, X)  # Predicted probabilities
+  
+  # MAtrix full of NAs to be replaced by bootstrap estimates
+  bootstrap_estimates <- matrix(NA, n_bootstrap, length(theta_hat))
+  
+  # Perform bootstrap sampling
+  for (i in 1:n_bootstrap) {
+    # Generate new y values based on the fitted probabilities prob_hat
+    # from Bernoulli (binomial with n=1)
+    y_boot <- rbinom(n, 1, prob = prob_hat)
+    
+    # Fit glm on bootstrapped sample
+    modell_boot <- glm(y_boot ~ Alder + Kon + Utbildare, 
+              data = data_individ,
+              family = "binomial")
+    
+    # Store the estimated coefficients (here theta) in each row
+    bootstrap_estimates[i, ] <- coef(modell_boot)
+  }
+  
+  # Calculate standard errors as the standard deviation of bootstrap estimates
+  # 2 means you take the standard deviation of each column
+  se_boot <- apply(bootstrap_estimates, 2, sd)  
+  return(se_boot)
+}
+
+se_bootstrap <- parametric_bootstrap(X, y, n_bootstrap = 1000)
+print(se_bootstrap)
+```
+
+The values from the bootstrap are close, but slightly different to the standard error of R.
+
+```{r}
+# construct 95% CI with bootstrap
+
+bootstrap_ci <- function(X, y, age, sex, education, n_bootstrap = 1000) {
+  # we use the normal bootstrapped sample like in the above function, 
+  # and calculate the probability (1 / (1 + exp(-X%*%theta_hat))) 
+  # for each run of the bootstrap
+  n <- length(y)
+  theta_hat <- coef(modell)  # estimates from glm
+  prob_hat <-  p_var(theta_hat, X)  # Fitted probabilities
+  
+  # Construct the new Xi for the person with my age
+  new_data <- c(1, age, sex, education)
+  
+  # Storage vector for bootstrap probabilities
+  prob_bootstrap <- numeric(n_bootstrap)
+  
+  # Perform bootstrap sampling
+  for (i in 1:n_bootstrap) {
+    
+    y_boot <- rbinom(n, 1, prob = prob_hat)
+    
+    modell_boot <- glm(y_boot ~ Alder + Kon + Utbildare, 
+              data = data_individ,
+              family = "binomial")
+    
+    # Predict the probability for the new data points
+    prob_bootstrap[i] <- p_var(coef(modell_boot), new_data)
+  }
+  
+  # Calculate 95% confidence interval from the bootstrap probabilities
+  ci_lower <- quantile(prob_bootstrap, 0.025)
+  ci_upper <- quantile(prob_bootstrap, 0.975)
+  
+  return(c(ci_lower, ci_upper))
+}
+
+ci <- bootstrap_ci(X, y, age = 22, sex = 0, education = 1, n_bootstrap = 1000)
+print(ci)
+
+```
+95% CI is (0.526, 0.656)
+
+The probability of Malin (age 22) of passing the exam is between .53 and .66.
+```{r}
+ci <- bootstrap_ci(X, y, age = 24, sex = 0, education = 1, n_bootstrap = 1000)
+print(ci)
+```
+ 
+ For Regina's age (24) the C.I of passing is between 0.51 and 0.64.
