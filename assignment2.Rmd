@@ -1,0 +1,32 @@
+```{r}
+load("proj_data.Rdata")
+modell <- glm(Resultat ~ Alder + Kon + Utbildare, 
+              data = data_individ,
+              family = "binomial")
+summary(modell)
+```
+```{r}
+source("funktioner.R")
+y <- matrix(data_individ$Resultat, ncol = 1)
+X <- model.matrix(Resultat ~ Alder + Kon + Utbildare, 
+                  data = data_individ)
+```
+
+# Task 1:
+
+Verify, using functions I and NR from Part I, that the z value column of the output are Wald statistics (see the textbook page 128).
+Z value column? Which is that? the output?
+
+```{r}
+  theta0 <- c(0, 0, 0, 0)
+  NR_estimate <- NR(theta0, 5, y, X)
+  I_estimate <-I(theta0, NR, X) # Is NR the z that we hear about?
+```
+```{r}
+  # According to the book 
+wald_statistics <- sqrt(1/I_estimate)
+print(wald_statistics)
+
+# No wait this is the standard error?
+```
+
