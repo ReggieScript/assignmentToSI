@@ -12,21 +12,40 @@ X <- model.matrix(Resultat ~ Alder + Kon + Utbildare,
                   data = data_individ)
 ```
 
-# Task 1:
+## Task 1:
 
 Verify, using functions I and NR from Part I, that the z value column of the output are Wald statistics (see the textbook page 128).
 Z value column? Which is that? the output?
+```{r}
+
+## Are these the z values we are supposed to work with?
+z_values <- unname(summary(modell)$coefficients[, "Estimate"])
+
+```
 
 ```{r}
   theta0 <- c(0, 0, 0, 0)
   NR_estimate <- NR(theta0, 5, y, X)
-  I_estimate <-I(theta0, NR, X) # Is NR the z that we hear about?
+  I_estimate <-I(NR_estimate, y, X) # Is NR the z that we hear about?
 ```
 ```{r}
   # According to the book 
-wald_statistics <- sqrt(1/I_estimate)
-print(wald_statistics)
+  wald_statistics <- sqrt(1/I_estimate) # I believe this is wrong
+  # print(wald_statistics)
+  
+  true_wald_statistics <-sqrt(I_estimate)%*%(NR_estimate-z_values)
+  print(true_wald_statistics)
 
 # No wait this is the standard error?
 ```
+## Task 2:
+
+Compute the generalized likelihood ratio statistics (see textbook chapter 5.5) that corresponds to the Wald statistics in Task 1 and determine the corresponding 𝑃
+-values. Note that your likelihood ratio statistics should be of the same order of magnitude as the squared Wald statistics (why?).
+
+```{r}
+  eta <- NR(theta0 = c(0, 0, 0), niter = 10, y = y, X = X[, -3])
+  eta
+```
+
 

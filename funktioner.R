@@ -49,7 +49,7 @@ NR <- function(theta0, niter, y, X){
   # iterations.
   
   #Note: this might break if the matrix dim from x changes
-    theta <- matrix(theta0, nrow = 4, ncol = 1)
+    theta <- matrix(theta0, nrow = length(theta0), ncol = 1)
   
   for (i in 1:niter){
     score <- S(theta, y, X)
