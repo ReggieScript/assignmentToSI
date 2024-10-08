@@ -19,7 +19,7 @@ Z value column? Which is that? the output?
 ```{r}
 
 ## Are these the z values we are supposed to work with?
-z_values <- unname(summary(modell)$coefficients[, "Estimate"])
+z_values <- unname(summary(modell)$coefficients[, "Estimate"]) #THESE ARE NOT Z VALUES DO NOT TRUST
 
 ```
 
@@ -30,13 +30,11 @@ z_values <- unname(summary(modell)$coefficients[, "Estimate"])
 ```
 ```{r}
   # According to the book 
-  wald_statistics <- sqrt(1/I_estimate) # I believe this is wrong
-  # print(wald_statistics)
   
-  true_wald_statistics <-sqrt(I_estimate)%*%(NR_estimate-z_values)
+  #true_wald_statistics <-%*%(NR_estimate-theta0) # Walder fixed: It was just the inverse
+  true_wald_statistics <- (NR_estimate- theta0)/(sqrt(diag(solve(I(NR_estimate, y, X)))))
   print(true_wald_statistics)
-
-# No wait this is the standard error?
+  print(z_values)
 ```
 ## Task 2:
 
