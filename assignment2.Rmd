@@ -1,3 +1,21 @@
+---
+title: "Assignment1"
+author: "Regina Crespo Lopez Oliver (20000322-T884) & Malin Mueller (20011115-T460)"
+date: "2024-09-27"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+  # Byt ÅÅMMDD mot ditt födelsedatum 
+  set.seed(011115) # - Malin
+  # set.seed(000322) # - Regina
+```
+
+
 ```{r}
 load("proj_data.Rdata")
 modell <- glm(Resultat ~ Alder + Kon + Utbildare, 
@@ -6,22 +24,16 @@ modell <- glm(Resultat ~ Alder + Kon + Utbildare,
 summary(modell)
 ```
 ```{r}
-source("funktioner.R")
-y <- matrix(data_individ$Resultat, ncol = 1)
-X <- model.matrix(Resultat ~ Alder + Kon + Utbildare, 
-                  data = data_individ)
+  source("funktioner.R")
+  y <- matrix(data_individ$Resultat, ncol = 1)
+  X <- model.matrix(Resultat ~ Alder + Kon + Utbildare, 
+                    data = data_individ)
 ```
 
 ## Task 1:
 
 Verify, using functions I and NR from Part I, that the z value column of the output are Wald statistics (see the textbook page 128).
 Z value column? Which is that? the output?
-```{r}
-
-## Are these the z values we are supposed to work with?
-z_values <- unname(summary(modell)$coefficients[, "Estimate"]) #THESE ARE NOT Z VALUES DO NOT TRUST
-
-```
 
 ```{r}
   theta0 <- c(0, 0, 0, 0)
@@ -39,57 +51,20 @@ z_values <- unname(summary(modell)$coefficients[, "Estimate"]) #THESE ARE NOT Z 
 
 Compute the generalized likelihood ratio statistics (see textbook chapter 5.5) that corresponds to the Wald statistics in Task 1 and determine the corresponding 𝑃
 -values. Note that your likelihood ratio statistics should be of the same order of magnitude as the squared Wald statistics (why?).
-```{r}
-  true_wald_statistics
-```
-```{r}
-  theta1 <- c(0, 0, 0)
-  for (i in 1:length(eta)){
-      NR_est <- NR(theta0 = theta1, niter = 10, y = y, X = X[, -i])
-      print(NR_est)
-    }
-```
-```{r}
-  theta1 <- c(0, 0, 0)
-  eta <- NR(c(0, 0, 0), niter = 10, y = y, X = X[, -3])
-  null <- l(eta, y, X[-3])
-  alt_eta <- NR(c(0, 0, 0, 0), niter = 10, y = y, X)
-  alt <- l(alt_eta, y, X)
-  gl <- 2*(null-alt)
-```
+
 
 ```{r}
   theta1 <- c(0, 0, 0)
-  eta <- NR(theta0 = theta1, niter = 10, y = y, X = X[, -3])
-  #print(eta)
-  gLikelihood <- 2*log(L(eta, y, X[, -3])/L(theta1, y, X[, -3]))
-  #print(gLikelihood)
-  for (i in 1:length(eta)){
-    #print(i)
-    #gLikelihood <- 2*log(L(eta[i], y, X[, -i])/L(theta1[i], y, X[, -i]))
-    theta_i <- eta
-    theta_i[-i] <- theta1[-i]
-    print(theta_i)
-    gLikelihood <- 2*(l(theta_i, y, X[, -i])- l(theta1, y, X[, -i]))
-    print(gLikelihood)
-  }
-  #gLikelihood <- 2*log(L(eta, y, X[, -3])/L(theta1, y, X[, -3]))
-  #gLikelihood
-  
-```
-```{r}
-
 ## Iterating through X's columns, comparing and obtaining the ratio 
   x_name = c('intercept', 'alder', 'kon', 'utbildare')
   results <- matrix(NA, nrow = length(x_name), ncol = 3)
   
   colnames(results) <- c("x_name", "gLikelihood", "p_value")
-  eta <- NR(theta0 = theta1, niter = 10, y = y, X = X[, -3])
   Lp_null <-L(NR_estimate, y, X)
   
   for (i in 1:(length(eta)+1)) {
     #print(x_name[i])
-    eta <- NR(c(0,0,0), niter = 10, y = y, X = X[, -i])
+    eta <- NR(theta1, niter = 10, y = y, X = X[, -i])
     Lp_ML <- L(eta, y, X[,-i])
     gLikelihood <-  2*(log(Lp_null) - log(Lp_ML))
     #print(W)
@@ -100,8 +75,14 @@ Compute the generalized likelihood ratio statistics (see textbook chapter 5.5) t
   
   print(results)
 ```
-Task 3:
+Comparing the results of the generalized ratio statistics (above), with the Wald statistics (below),
+shows the expected outcome of the task. The generalized likelihood statistics is in the same
+order of magnitude as the wald statistics, and even displays similar values.
 
+```{r}
+  true_wald_statistics^2
+```
+# Task 3
 The score statistic can, like the likelihood ratio statistic, be generalized to the case with a nuisance parameter 𝜂. The generalized score statistic is
 
 𝑇𝑆(𝜽0)=𝑆(𝜽0,𝜼̂ 𝑀𝐿(𝜽0))𝑇𝐼(𝜽0,𝜼̂ 𝑀𝐿(𝜽0))−1𝑆(𝜽0,𝜼̂ 𝑀𝐿(𝜽0))
@@ -120,6 +101,10 @@ If we want to maximize 𝜼↦𝐿(𝜽,𝜼) for a fix 𝜽≠0 the function NR
   score <- S(eta, y, X[, c(-2,-4)])
   print(score)
   fisher <- I(eta, y, X[, c(-2,-4)])
+```
+
+
+```{r}
   print(fisher)
   T <- t(score)%*%solve(fisher)%*%score
   print(T)
@@ -127,5 +112,28 @@ If we want to maximize 𝜼↦𝐿(𝜽,𝜼) for a fix 𝜽≠0 the function NR
   p_val_T <- pchisq(T, 1, lower.tail = FALSE)
   print(p_val_T)
 ```
+#Task 4:
+Compute the profile likelihood (textbook definition 5.4) for parameter 𝜃𝐾𝑜𝑛
+, 𝐿𝑝(𝜃𝐾𝑜𝑛)
+, on a suitable grid of parameter values. Use these to graph 𝐿𝑝
+ together with the corresponding estimated likelihood (textbook definition 5.5). In order to determine 𝜂̂ 𝑀𝐿(𝜃𝐾𝑜𝑛)
+ you may for example use the glm.fit function with an extra offset as in t
+```{r}
+theta.Kon <- 0.5 # example value
+profil <- glm.fit(x = X[, -3], y = y,
+                  offset = theta.Kon * X[, 3],
+                  family = binomial())
+profil$coeff
+```
 
+which gives estimates of the other coefficients when 𝜃𝐾𝑜𝑛=0.5
+ (as an example value). Decide a 95% confidence interval based on the profile likelihood visually from the figure by drawing a horizontal line at a suitable level (c.f. Figure 5.3b in the textbook). The choice of level should be motivated and the result compared with the corresponding Wald interval.
+ 
+```{r}
+## Estimated likelihood
+  L(theta.Kon, y, X[,-3])
 
+```
+ 
+ 
+ 
