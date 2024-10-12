@@ -1,14 +1,22 @@
 
 p_var <- function(theta, X){
   # function to compute probabiloty recieving theta and X
-  p_res <- 1 / (1 + exp(-X%*%theta)) 
+  if (length(theta) > 1){
+    p_res <- 1 / (1 + exp(-X%*%theta)) 
+  }
+  else{
+    p_res <- 1 / (1 + exp(-X*theta)) 
+  }
+  
   return(p_res)
 }
 
 L <- function(theta, y, X){
   ## likelihood
   p_var <- p_var(theta = theta, X = X)
+  #likelihood <- p_var^y %*% (1 - p_var)^(1 - y)
   likelihood <- prod(p_var^y * (1 - p_var)^(1 - y))
+    
   return(likelihood)
 }
 

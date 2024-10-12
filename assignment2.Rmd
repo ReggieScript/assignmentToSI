@@ -34,16 +34,78 @@ z_values <- unname(summary(modell)$coefficients[, "Estimate"]) #THESE ARE NOT Z 
   #true_wald_statistics <-%*%(NR_estimate-theta0) # Walder fixed: It was just the inverse
   true_wald_statistics <- (NR_estimate- theta0)/(sqrt(diag(solve(I(NR_estimate, y, X)))))
   print(true_wald_statistics)
-  print(z_values)
 ```
 ## Task 2:
 
 Compute the generalized likelihood ratio statistics (see textbook chapter 5.5) that corresponds to the Wald statistics in Task 1 and determine the corresponding 𝑃
 -values. Note that your likelihood ratio statistics should be of the same order of magnitude as the squared Wald statistics (why?).
-
 ```{r}
-  eta <- NR(theta0 = c(0, 0, 0), niter = 10, y = y, X = X[, -3])
-  eta
+  true_wald_statistics
+```
+```{r}
+  theta1 <- c(0, 0, 0)
+  for (i in 1:length(eta)){
+      NR_est <- NR(theta0 = theta1, niter = 10, y = y, X = X[, -i])
+      print(NR_est)
+    }
+```
+```{r}
+  theta1 <- c(0, 0, 0)
+  eta <- NR(c(0, 0, 0), niter = 10, y = y, X = X[, -3])
+  null <- l(eta, y, X[-3])
+  alt_eta <- NR(c(0, 0, 0, 0), niter = 10, y = y, X)
+  alt <- l(alt_eta, y, X)
+  gl <- 2*(null-alt)
 ```
 
+```{r}
+  theta1 <- c(0, 0, 0)
+  eta <- NR(theta0 = theta1, niter = 10, y = y, X = X[, -3])
+  #print(eta)
+  gLikelihood <- 2*log(L(eta, y, X[, -3])/L(theta1, y, X[, -3]))
+  #print(gLikelihood)
+  for (i in 1:length(eta)){
+    #print(i)
+    #gLikelihood <- 2*log(L(eta[i], y, X[, -i])/L(theta1[i], y, X[, -i]))
+    theta_i <- eta
+    theta_i[-i] <- theta1[-i]
+    print(theta_i)
+    gLikelihood <- 2*(l(theta_i, y, X[, -i])- l(theta1, y, X[, -i]))
+    print(gLikelihood)
+  }
+  #gLikelihood <- 2*log(L(eta, y, X[, -3])/L(theta1, y, X[, -3]))
+  #gLikelihood
+  
+```
+```{r}
+
+## Iterating through X's columns, comparing and obtaining the ratio 
+  x_name = c('intercept', 'alder', 'kon', 'utbildare')
+  results <- matrix(NA, nrow = length(x_name), ncol = 3)
+  
+  colnames(results) <- c("x_name", "gLikelihood", "p_value")
+  eta <- NR(theta0 = theta1, niter = 10, y = y, X = X[, -3])
+  Lp_null <-L(NR_estimate, y, X)
+  
+  for (i in 1:(length(eta)+1)) {
+    #print(x_name[i])
+    eta <- NR(c(0,0,0), niter = 10, y = y, X = X[, -i])
+    Lp_ML <- L(eta, y, X[,-i])
+    gLikelihood <-  2*(log(Lp_null) - log(Lp_ML))
+    #print(W)
+    p_value <- pchisq(gLikelihood, 1, lower.tail = FALSE)
+    #print(p_value)
+    results[i, ] <- c(x_name[i], gLikelihood,p_value)
+  }
+  
+  print(results)
+```
+Task 3:
+
+The score statistic can, like the likelihood ratio statistic, be generalized to the case with a nuisance parameter 𝜂. The generalized score statistic is
+
+𝑇𝑆(𝜽0)=𝑆(𝜽0,𝜼̂ 𝑀𝐿(𝜽0))𝑇𝐼(𝜽0,𝜼̂ 𝑀𝐿(𝜽0))−1𝑆(𝜽0,𝜼̂ 𝑀𝐿(𝜽0))
+with an asymptotic 𝜒2(𝑞) distribution (notation following the textbook chapter 5.5). An advantage of this statistic is thet the ML-estimate only needs to be computed under the null hypothesis. Compute the ML estimate of 𝜼=(𝜃𝐴𝑙𝑑𝑒𝑟,𝜃𝑈𝑡𝑏𝑖𝑙𝑑𝑎𝑟𝑒) under 𝐻0:𝜽=(𝜃𝑖𝑛𝑡𝑒𝑟𝑐𝑒𝑝𝑡,𝜃𝐾𝑜𝑛)=(0,0) and use this to determine a 𝑃
+-value based on the generalized score statistic (a model without intercept is somewhat weird for this case, so the intercept should be included regardless of its significance).
+If we want to maximize 𝜼↦𝐿(𝜽,𝜼) for a fix 𝜽≠0 the function NR needs to be modified. Instead of doing so, we use R’s glm function with a so called offset. An offset is a variable 𝑜𝑖 that is added to the linear component 𝑥𝑖𝜃without a coefficient. For the logistic regression with offset 𝑜𝑖we then get 𝑝(𝑥𝑖)=(1+exp(−𝑥𝑖𝜃+𝑜𝑖))
 
