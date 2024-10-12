@@ -109,3 +109,23 @@ with an asymptotic 𝜒2(𝑞) distribution (notation following the textbook cha
 -value based on the generalized score statistic (a model without intercept is somewhat weird for this case, so the intercept should be included regardless of its significance).
 If we want to maximize 𝜼↦𝐿(𝜽,𝜼) for a fix 𝜽≠0 the function NR needs to be modified. Instead of doing so, we use R’s glm function with a so called offset. An offset is a variable 𝑜𝑖 that is added to the linear component 𝑥𝑖𝜃without a coefficient. For the logistic regression with offset 𝑜𝑖we then get 𝑝(𝑥𝑖)=(1+exp(−𝑥𝑖𝜃+𝑜𝑖))
 
+```{r}
+  #walder and utbilder are columns 2 and 4 - so we exclude them 
+  #from restricted X - we only fit model under H0
+  eta <- NR(c(0,0), niter = 10, y = y, X = X[, c(-2,-4)]) 
+  #compute MLE for nuisance intercept and kon
+  print(eta)
+  
+  #scover, fisher and t at mle for incercept and kon, and null values for alder and utbildare
+  score <- S(eta, y, X[, c(-2,-4)])
+  print(score)
+  fisher <- I(eta, y, X[, c(-2,-4)])
+  print(fisher)
+  T <- t(score)%*%solve(fisher)%*%score
+  print(T)
+  
+  p_val_T <- pchisq(T, 1, lower.tail = FALSE)
+  print(p_val_T)
+```
+
+
