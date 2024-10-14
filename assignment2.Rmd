@@ -1,6 +1,6 @@
 ---
 title: "Assignment1"
-author: "Regina Crespo Lopez Oliver (20000322-T884) & Malin Mueller (20011115-T460)"
+author: "Regina Crespo Lopez Oliver (20000322-8806) & Malin Mueller (20011115-T460)"
 date: "2024-09-27"
 output:
   pdf_document: default
@@ -33,7 +33,6 @@ summary(modell)
 ## Task 1:
 
 Verify, using functions I and NR from Part I, that the z value column of the output are Wald statistics (see the textbook page 128).
-Z value column? Which is that? the output?
 
 ```{r}
   theta0 <- c(0, 0, 0, 0)
@@ -42,35 +41,36 @@ Z value column? Which is that? the output?
 ```
 ```{r}
   # According to the book 
-  
-  #true_wald_statistics <-%*%(NR_estimate-theta0) # Walder fixed: It was just the inverse
-  true_wald_statistics <- (NR_estimate- theta0)/(sqrt(diag(solve(I(NR_estimate, y, X)))))
-  inv_diag <- diag(solve(I(NR_estimate, y, X)))
+  true_wald_statistics <- (NR_estimate- theta0)/(sqrt(diag(solve(I(NR_estimate, y, X))))) #wald statistic from R method
+  inv_diag <- diag(solve(I(NR_estimate, y, X))) #the calculation of our standard error
+  wald <- NR_estimate/sqrt(inv_diag) # wald statistic from our method
   print(true_wald_statistics)
+  print(wald)
+  # They are the same!!
 ```
 ## Task 2:
 
-Compute the generalized likelihood ratio statistics (see textbook chapter 5.5) that corresponds to the Wald statistics in Task 1 and determine the corresponding 𝑃
--values. Note that your likelihood ratio statistics should be of the same order of magnitude as the squared Wald statistics (why?).
+Compute the generalized likelihood ratio statistics (see textbook chapter 5.5) that corresponds to the Wald statistics in Task 1 and determine the corresponding P -values. Note that your likelihood ratio statistics should be of the same order of magnitude as the squared Wald statistics (why?)
+
+Our answer:  Note that your likelihood ratio statistics should be of the same order of magnitude as the squared Wald statistic - this is because the wald statistic follows a normal distribution, whereas the likelihood ratio follows a chi square distribution.
 
 
 ```{r}
   theta1 <- c(0, 0, 0)
-## Iterating through X's columns, comparing and obtaining the ratio 
+  ## Iterating through X's columns, comparing and obtaining the ratio 
   x_name = c('intercept', 'alder', 'kon', 'utbildare')
   results <- matrix(NA, nrow = length(x_name), ncol = 3)
   
   colnames(results) <- c("x_name", "gLikelihood", "p_value")
   Lp_null <-L(NR_estimate, y, X)
   
-  for (i in 1:(length(eta)+1)) {
-    #print(x_name[i])
+  for (i in 1:4) { #Why 4? we have 4 columns in X
+
     eta <- NR(theta1, niter = 10, y = y, X = X[, -i])
     Lp_ML <- L(eta, y, X[,-i])
     gLikelihood <-  2*(log(Lp_null) - log(Lp_ML))
-    #print(W)
+
     p_value <- pchisq(gLikelihood, 1, lower.tail = FALSE)
-    #print(p_value)
     results[i, ] <- c(x_name[i], gLikelihood,p_value)
   }
   
@@ -83,13 +83,14 @@ order of magnitude as the wald statistics, and even displays similar values.
 ```{r}
   true_wald_statistics^2
 ```
-# Task 3
-The score statistic can, like the likelihood ratio statistic, be generalized to the case with a nuisance parameter 𝜂. The generalized score statistic is
+## Task 3
+The score statistic can, like the likelihood ratio statistic, be generalized to the case with a nuisance parameter eta. The generalized score statistic is
 
-𝑇𝑆(𝜽0)=𝑆(𝜽0,𝜼̂ 𝑀𝐿(𝜽0))𝑇𝐼(𝜽0,𝜼̂ 𝑀𝐿(𝜽0))−1𝑆(𝜽0,𝜼̂ 𝑀𝐿(𝜽0))
-with an asymptotic 𝜒2(𝑞) distribution (notation following the textbook chapter 5.5). An advantage of this statistic is thet the ML-estimate only needs to be computed under the null hypothesis. Compute the ML estimate of 𝜼=(𝜃𝐴𝑙𝑑𝑒𝑟,𝜃𝑈𝑡𝑏𝑖𝑙𝑑𝑎𝑟𝑒) under 𝐻0:𝜽=(𝜃𝑖𝑛𝑡𝑒𝑟𝑐𝑒𝑝𝑡,𝜃𝐾𝑜𝑛)=(0,0) and use this to determine a 𝑃
--value based on the generalized score statistic (a model without intercept is somewhat weird for this case, so the intercept should be included regardless of its significance).
-If we want to maximize 𝜼↦𝐿(𝜽,𝜼) for a fix 𝜽≠0 the function NR needs to be modified. Instead of doing so, we use R’s glm function with a so called offset. An offset is a variable 𝑜𝑖 that is added to the linear component 𝑥𝑖𝜃without a coefficient. For the logistic regression with offset 𝑜𝑖we then get 𝑝(𝑥𝑖)=(1+exp(−𝑥𝑖𝜃+𝑜𝑖))
+TS(theta0) S(theta0, lambda_ML(theta0))^ I(theta0, lambda_ML(theta(-1) S(theta0 lambda_ML(theta0))
+
+an asymptotic chi^2(q) distribution (notation following the textbook chapter 5.5). An advantage of this statistic is that the ML-estimate only needs to be computed under the null hypothesis. Compute the ML estimate of lambda = (theta_Alder, theta_Utbare) under H0: theta = (theta_intercept, theta_Kon) = (0,0) and use this to determine a P-value based on the generalized score statistic (a model without intercept is somewhat weird for this case, so the intercept should be included regardless of its significance).
+
+If we want to maximize lambda  L(theta, lambda) for a fixed theta != 0, the function NR needs to be modified. Instead of doing so, we use R's glm function with a so-called offset. An offset is a variable oi that is added to the linear component xitheta without a coefficient For the logistic regression with offset oi, we then get p(xi) = (1 + exp(-xitheta + oi))^(-1).
 
 ```{r}
   #walder and utbilder are columns 2 and 4 - so we exclude them 
@@ -98,7 +99,8 @@ If we want to maximize 𝜼↦𝐿(𝜽,𝜼) for a fix 𝜽≠0 the function NR
   #compute MLE for nuisance intercept and kon
   print(eta)
   
-  #scover, fisher and t at mle for incercept and kon, and null values for alder and utbildare
+  #scover, fisher and t at mle for incercept and kon, and null values for 
+  # alder and utbildare
   score <- S(eta, y, X[, c(-2,-4)])
   print(score)
   fisher <- I(eta, y, X[, c(-2,-4)])
@@ -113,11 +115,16 @@ If we want to maximize 𝜼↦𝐿(𝜽,𝜼) for a fix 𝜽≠0 the function NR
   p_val_T <- pchisq(T, 1, lower.tail = FALSE)
   print(p_val_T)
 ```
-#Task 4:
-Compute the profile likelihood (textbook definition 5.4) for parameter 𝜃𝐾𝑜𝑛 , 𝐿𝑝(𝜃𝐾𝑜𝑛), on a suitable grid of parameter
-values. Use these to graph 𝐿𝑝 together with the corresponding estimated likelihood (textbook definition 5.5). In order to 
-determine 𝜂̂ 𝑀𝐿(𝜃𝐾𝑜𝑛) you may for example use the glm.fit function with an extra offset as in which gives estimates of the other coefficients when 𝜃𝐾𝑜𝑛=0.5
- (as an example value). Decide a 95% confidence interval based on the profile likelihood visually from the figure by drawing a horizontal line at a suitable level (c.f. Figure 5.3b in the textbook). The choice of level should be motivated and the result compared with the corresponding Wald interval.t
+## Task 4:
+Compute the profile likelihood (textbook definition 5.4) for parameter 
+theta_Kon, Lp(theta_Kon), on a suitable grid of parameter values Use these graph 
+Lp together with the corresponding estimated likelihood. In order to determine 
+eta_ML(theta_Kon) you may for example use the glm.fit function with an extra 
+offset as in which gives estimates of the other coefficients when theta_Kon=.5 
+(as an example value). Decide a 95% confidence interval based on the profile 
+likelihood visually from the figure by drawing a horizontal line at a suitable 
+level (c.f. Figure 5.3b in the textbook). The choice of level should be 
+motivated and the result compared with the corresponding Wald interval.
 ```{r}
 theta.Kon <- 0.5 # example value
 profil <- glm.fit(x = X[, -3], y = y,
@@ -126,13 +133,6 @@ profil <- glm.fit(x = X[, -3], y = y,
 profil$coeff
 ```
 
-
- 
-```{r}
-## Estimated likelihood
-  L(theta.Kon, y, X[,-3])
-
-```
 ```{r}
 # likelihood profile for L(theta, eta)
   compute_profile_likelihood <- function(theta_kon, y, X){
@@ -156,10 +156,13 @@ profil$coeff
   theta_grid <- seq(-1, 1, length.out = 100)  # Values of theta_Kon from -1 to 1
   
   #profile likelihood
-  profile_likelihood_values <- sapply(theta_grid, FUN = function(theta_kon) compute_profile_likelihood(theta_kon, y, X))
+  profile_likelihood_values <- sapply(theta_grid, FUN = function(theta_kon) 
+    compute_profile_likelihood(theta_kon, y, X))
   
   # normalize profile likelihood
-  normalized_profile_likelihood <- (profile_likelihood_values - min(profile_likelihood_values)) / (max(profile_likelihood_values) - min(profile_likelihood_values))
+  normalized_profile_likelihood <- (profile_likelihood_values - 
+                                      min(profile_likelihood_values)) / 
+    (max(profile_likelihood_values) - min(profile_likelihood_values))
   
   
   #estimated likelihood of full model L(theta_kon)
@@ -167,17 +170,25 @@ profil$coeff
     L(c(NR_estimate[1], NR_estimate[2], theta, NR_estimate[4]), y, X)
   })
   
-  normalized_estimated_likelihood <- (estimated_likelihood_values - min(estimated_likelihood_values)) / (max(estimated_likelihood_values) - min(estimated_likelihood_values))
+  normalized_estimated_likelihood <- (estimated_likelihood_values - 
+                                        min(estimated_likelihood_values)) / 
+    (max(estimated_likelihood_values) - min(estimated_likelihood_values))
   
   
   #plot
-  plot(theta_grid, normalized_profile_likelihood ,ylab="normalized profile Likelihoods",xlab="theta_KonMan",type="l", col="red", ylim=c(0,1))
+  plot(theta_grid, normalized_profile_likelihood ,
+       ylab="normalized profile Likelihoods",
+       xlab="theta_KonMan",type="l", col="red", ylim=c(0,1))
   lines(theta_grid, normalized_estimated_likelihood, col = "blue", lwd = 2)
-  abline(h=0.147) #  The value corresponds to the likelihood threshold for a 95% confidence interval 
-  legend(-1,1, legend=c("Profile Likelihood", "Estimated Likelihood", "Confidence Level"), col= c("red", "blue", "black"), lty=1, cex=0.8)
+  abline(h=0.147) #  The value corresponds to the likelihood threshold for a 
+                  # 95% confidence interval 
+  legend(-1,1, legend=c("Profile Likelihood", "Estimated Likelihood", 
+                        "Confidence Level"), col= c("red", "blue", "black"), 
+         lty=1, cex=0.8)
 
 ```
-Where the likelihood crosses horizontal black line gives you a 95% CI for theta kon
+Where the likelihood crosses horizontal black line gives you a 95% CI for 
+theta kon.
 ```{r}
  # Wald confidence interval
   wald_ci_lower <-  NR_estimate[3] - 1.96 * inv_diag[3]
@@ -185,7 +196,12 @@ Where the likelihood crosses horizontal black line gives you a 95% CI for theta 
   print(wald_ci_lower)
   print(wald_ci_upper)
 ```
-
+  The wald confidence interval is smaller than the profile likelihood interval. 
+  This means, it is not accurately capturing the uncertainty in the parameter
+  estimate. In such a case, it would prove wiser to use the profile likelihood 
+  interval.
+  
+  
  
  
  
