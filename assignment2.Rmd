@@ -45,6 +45,7 @@ Z value column? Which is that? the output?
   
   #true_wald_statistics <-%*%(NR_estimate-theta0) # Walder fixed: It was just the inverse
   true_wald_statistics <- (NR_estimate- theta0)/(sqrt(diag(solve(I(NR_estimate, y, X)))))
+  inv_diag <- diag(solve(I(NR_estimate, y, X)))
   print(true_wald_statistics)
 ```
 ## Task 2:
@@ -113,11 +114,10 @@ If we want to maximize 𝜼↦𝐿(𝜽,𝜼) for a fix 𝜽≠0 the function NR
   print(p_val_T)
 ```
 #Task 4:
-Compute the profile likelihood (textbook definition 5.4) for parameter 𝜃𝐾𝑜𝑛
-, 𝐿𝑝(𝜃𝐾𝑜𝑛)
-, on a suitable grid of parameter values. Use these to graph 𝐿𝑝
- together with the corresponding estimated likelihood (textbook definition 5.5). In order to determine 𝜂̂ 𝑀𝐿(𝜃𝐾𝑜𝑛)
- you may for example use the glm.fit function with an extra offset as in t
+Compute the profile likelihood (textbook definition 5.4) for parameter 𝜃𝐾𝑜𝑛 , 𝐿𝑝(𝜃𝐾𝑜𝑛), on a suitable grid of parameter
+values. Use these to graph 𝐿𝑝 together with the corresponding estimated likelihood (textbook definition 5.5). In order to 
+determine 𝜂̂ 𝑀𝐿(𝜃𝐾𝑜𝑛) you may for example use the glm.fit function with an extra offset as in which gives estimates of the other coefficients when 𝜃𝐾𝑜𝑛=0.5
+ (as an example value). Decide a 95% confidence interval based on the profile likelihood visually from the figure by drawing a horizontal line at a suitable level (c.f. Figure 5.3b in the textbook). The choice of level should be motivated and the result compared with the corresponding Wald interval.t
 ```{r}
 theta.Kon <- 0.5 # example value
 profil <- glm.fit(x = X[, -3], y = y,
@@ -126,14 +126,66 @@ profil <- glm.fit(x = X[, -3], y = y,
 profil$coeff
 ```
 
-which gives estimates of the other coefficients when 𝜃𝐾𝑜𝑛=0.5
- (as an example value). Decide a 95% confidence interval based on the profile likelihood visually from the figure by drawing a horizontal line at a suitable level (c.f. Figure 5.3b in the textbook). The choice of level should be motivated and the result compared with the corresponding Wald interval.
+
  
 ```{r}
 ## Estimated likelihood
   L(theta.Kon, y, X[,-3])
 
 ```
+```{r}
+# likelihood profile for L(theta, eta)
+  compute_profile_likelihood <- function(theta_kon, y, X){
+    
+    #set theta
+    theta.Kon <- theta_kon
+    #fit logistic regression model
+    profile <- glm.fit(x = X[, -3], y = y,
+                      offset = theta.Kon * X[, 3],
+                      family = binomial())
+    # extract MLEs for intercep, age, education
+    eta_ML <- profile$coeff
+    
+    #create a vector with all of our parameter values
+    full_params <- c(eta_ML[1], eta_ML[2], theta_kon, eta_ML[3])
+    profile_L <- L(full_params, y, X)
+    return(profile_L)
+  }
+
+  # 100 values of theta.kon from -1 to 1
+  theta_grid <- seq(-1, 1, length.out = 100)  # Values of theta_Kon from -1 to 1
+  
+  #profile likelihood
+  profile_likelihood_values <- sapply(theta_grid, FUN = function(theta_kon) compute_profile_likelihood(theta_kon, y, X))
+  
+  # normalize profile likelihood
+  normalized_profile_likelihood <- (profile_likelihood_values - min(profile_likelihood_values)) / (max(profile_likelihood_values) - min(profile_likelihood_values))
+  
+  
+  #estimated likelihood of full model L(theta_kon)
+  estimated_likelihood_values <- sapply(theta_grid, function(theta) {
+    L(c(NR_estimate[1], NR_estimate[2], theta, NR_estimate[4]), y, X)
+  })
+  
+  normalized_estimated_likelihood <- (estimated_likelihood_values - min(estimated_likelihood_values)) / (max(estimated_likelihood_values) - min(estimated_likelihood_values))
+  
+  
+  #plot
+  plot(theta_grid, normalized_profile_likelihood ,ylab="normalized profile Likelihoods",xlab="theta_KonMan",type="l", col="red", ylim=c(0,1))
+  lines(theta_grid, normalized_estimated_likelihood, col = "blue", lwd = 2)
+  abline(h=0.147) #  The value corresponds to the likelihood threshold for a 95% confidence interval 
+  legend(-1,1, legend=c("Profile Likelihood", "Estimated Likelihood", "Confidence Level"), col= c("red", "blue", "black"), lty=1, cex=0.8)
+
+```
+Where the likelihood crosses horizontal black line gives you a 95% CI for theta kon
+```{r}
+ # Wald confidence interval
+  wald_ci_lower <-  NR_estimate[3] - 1.96 * inv_diag[3]
+  wald_ci_upper <-  NR_estimate[3] + 1.96 * inv_diag[3]
+  print(wald_ci_lower)
+  print(wald_ci_upper)
+```
+
  
  
  
