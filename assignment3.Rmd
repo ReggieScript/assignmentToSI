@@ -54,10 +54,11 @@ n <- nrow(data_individ)  # Number of observations
 
 # Extract the response vector 'y' and the design matrix 'X' from your data
 # y <- data_individ$Resultat
-# X <- model.matrix(~ Alder + Kon + Utbildare, data = data_individ)
+# X <- model.matrix(~ Alder + Kon + Utbildare, data = data_individ
 
 # Loop through each observation for leave-one-out cross-validation
 for (i in 1:n) {
+  # leave one out cv
   # Create the training set by excluding the i-th observation
   X_train <- X[-i, ]
   y_train <- y[-i]
