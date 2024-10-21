@@ -1,0 +1,193 @@
+---
+title: "Assignment1"
+author: "Regina & Malin"
+date: "2024-09-21"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+load("proj_data.Rdata")
+modell <- glm(Resultat ~ Alder + Kon + Utbildare, 
+              data = data_individ,
+              family = "binomial")
+summary(modell)
+```
+## Task1
+```{r, code = readLines("funktioner.R")}
+source("funktioner.R")
+```
+
+
+```{r}
+y <- matrix(data_individ$Resultat, ncol = 1)
+X <- model.matrix(Resultat ~ Alder + Kon + Utbildare, 
+                  data = data_individ)
+
+theta0 <- coef(modell)
+MLE <- NR(theta0, 10, y, X)
+log_likelihood <- l(MLE, y, X)
+num_params <- length(coef(modell))  # Number of estimated parameters
+aic_manual <- -2 * log_likelihood + 2 * num_params
+cat("Manual AIC:", aic_manual, "\n")
+```
+
+```{r}
+cv_log_likelihood <- 0
+
+n <- nrow(data_individ)  # Number of observations
+
+# Extract the response vector 'y' and the design matrix 'X' from your data
+# y <- data_individ$Resultat
+# X <- model.matrix(~ Alder + Kon + Utbildare, data = data_individ)
+
+# Loop through each observation for leave-one-out cross-validation
+for (i in 1:n) {
+  # Create the training set by excluding the i-th observation
+  X_train <- X[-i, ]
+  y_train <- y[-i]
+  
+  # Initial guess for MLE 
+  theta0 <- coef(modell)  
+  
+  #MLE for train data
+  MLE_i <- NR(theta0, 10, y_train, X_train)
+  
+  # Calculate the log-likelihood for the left-out i-th obs
+  # but using the MLE calculated from the training data
+  
+  # extract i-th obs
+  X_test <- X[i, , drop = FALSE]
+  y_test <- y[i]
+  
+  # Compute the log-likelihood for the left-out observation
+  # from formula 7.9 the resulting cross-validated average log-likelihood
+  # is a sum of all of the i likelihoods
+  cv_log_likelihood <- cv_log_likelihood + l(MLE_i, y_test, X_test)
+}
+
+# Compute the cross-validated average log-likelihood (divide by n obs)
+kcv <- cv_log_likelihood / n
+cat("Cross-validated log-likelihood:", kcv, "\n")
+
+# Use kcv to calculate the LOOCV AIC :
+# AIC = -2 * log-likelihood + 2 * number of parameters
+num_params <- length(theta0)  # Number of estimated parameters = 4
+loo_cv_aic <- -2 * cv_log_likelihood + 2 * num_params
+cat("LOO-CV AIC:", loo_cv_aic, "\n")
+```
+This AIC value matches the true value almost - it may be more generalized since it incorporates how well the model works on unseen data (here the x_i).
+
+## Task 2
+
+```{r}
+# Function to compute posterior density up to a constant
+post <- function(theta, y, X) {
+  # doing the posterior in terms of loglikehood to make operations easier
+  eta <- X %*% theta
+  
+  # Log-likelihood (numerically stable form)
+  log_likelihood <- sum(y * eta - log(1 + exp(eta)))
+  
+  #log_likelihood <- l(theta, y, X)
+  
+  
+  # Prior: N(0, 100I) -> log density of a normal distribution
+  log_prior <- -0.5 * sum(theta^2 / 100)
+
+  return(log_likelihood+log_prior)
+}
+
+Xtest <- cbind(1, 18:25, rep(c(0, 1), 4), rep(c(1, 1, 0, 0), 2))
+ytest <- c(rep(TRUE, 4), rep(FALSE, 4))
+# do the exponential to get it back in terms of likelihood
+exp(post(c(260, -10, 10, -20), ytest, Xtest)) / exp(post(c(270, -15, 15, -25), ytest , Xtest))
+```
+## Task 3
+
+The Metropolis-Hastings algorithm generates a sequence of samples that approximate the posterior distribution - constructs a Markov chain — a sequence of parameter values where each value only depends on the previous one. After many iterations: Over time, the sequence of theta values will approximate the posterior distribution.
+
+```{r}
+mh_algorithm <- function(theta, y, X, sigma, n_iter = 10000) {
+  # Number of parameters
+  n_params <- length(theta)
+  
+  # Store the samples
+  theta_samples <- matrix(NA, nrow = n_iter, ncol = n_params)
+  theta_samples[1, ] <- theta  # Set the starting point
+  
+  # Sample a candidate point or proposal from the proposal distribution
+  for (t in 2:n_iter) {
+    # Previous theta
+    theta_prev <- theta_samples[t - 1, ]
+    
+    # Sample candidate point theta* from normal distribution (proposal)
+    #theta_star <- rnorm(n_params, mean = theta_prev, sd = proposal_sd)
+    
+    theta_star <- theta_samples[t-1,] + rnorm(n_params) * sigma
+    # Compute acceptance probability (numerically stable)
+    alpha <- exp(post(theta_star, y, X))/exp(post(theta_prev, y, X))
+    alpha <- min(1, alpha)  
+    
+    # Draw a uniform random number
+    u <- runif(1)
+    
+    # Accept or reject the candidate
+    if (u <= alpha) {
+      theta_samples[t, ] <- theta_star  # Accept the candidate
+    } else {
+      theta_samples[t, ] <- theta_prev  # Reject and keep the previous value
+    }
+  }
+  
+  return(theta_samples)  # Return the matrix of samples
+}
+```
+
+```{r}
+mle_val <- NR(coef(modell), 10, y, X)  
+mle_se <- summary(modell)$coefficients[,"Std. Error"]
+
+# Run the Metropolis-Hastings algorithm
+posterior_samples <- mh_algorithm(mle_val, data_individ$Resultat, X, mle_se, n_iter = 10000)
+```
+
+```{r}
+par(mfrow = c(2, 2))  # 2x2 grid for plots
+for (i in 1:ncol(posterior_samples)) {
+  plot(posterior_samples[, i], type = "l", main = paste("Trace of theta[", i, "]", sep=""))
+}
+```
+```{r}
+par(mfrow = c(2, 2))  # 2x2 grid for plots
+for (i in 1:ncol(posterior_samples)) {
+  hist(posterior_samples[, i], breaks = 30, main = paste("Posterior of theta[", i, "]", sep=""), xlab = "")
+}
+```
+
+```{r}
+posterior_means <- colMeans(posterior_samples)
+cred_intervals <- apply(posterior_samples, 2, function(x) quantile(x, probs = c(0.025, 0.975)))
+
+posterior_means  # Posterior means
+cred_intervals  # 95% credible intervals using quantiles
+```
+```{r}
+
+x_star <- c(1, 22, sex= 0, 1)  # 
+
+#collecting the samples that correspond to x star
+p_star_samples <- p_var(x_star, posterior_samples)
+
+#probability of a pass using posterior samples
+p_star_mean <- mean(p_star_samples)  # Posterior mean of P(Y* = 1 | y)
+
+p_star_mean  
+```
+
