@@ -1,14 +1,19 @@
 ---
-title: "Assignment1"
-author: "Regina & Malin"
-date: "2024-09-21"
+title: "Computer assignment 3 - Theory of Statistical Inference"
+author: "Regina Crespo Lopez Oliver (20000322-8806) & 
+Malin Mueller (20011115-T460)"
+date: "2024-09-27"
 output:
   pdf_document: default
   html_document: default
 ---
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+  # Byt ÅÅMMDD mot ditt födelsedatum 
+  set.seed(011115) # - Malin
+  # set.seed(000322) # - Regina
 ```
 
 
@@ -19,10 +24,14 @@ modell <- glm(Resultat ~ Alder + Kon + Utbildare,
               family = "binomial")
 summary(modell)
 ```
-## Task1
 ```{r, code = readLines("funktioner.R")}
 source("funktioner.R")
 ```
+
+## Task1
+Compute AIC for the model using functions from previous assignment and make sure 
+it agrees with R’s value. You should also compute the corresponding value based 
+on leave-one-out cross validation (see textbook (7.9)).
 
 
 ```{r}
@@ -82,10 +91,14 @@ num_params <- length(theta0)  # Number of estimated parameters = 4
 loo_cv_aic <- -2 * cv_log_likelihood + 2 * num_params
 cat("LOO-CV AIC:", loo_cv_aic, "\n")
 ```
-This AIC value matches the true value almost - it may be more generalized since it incorporates how well the model works on unseen data (here the x_i).
+This AIC value almost matches the true value - it may be because it is more 
+generalized since it incorporates how well the model works on unseen 
+data (x_i in this case).
 
 ## Task 2
-
+Write a function post <- function(theta, y, X){...} that evaluates the posterior
+density (up to a multiplicative constant) at theta, given y and X as in previous
+assignments.
 ```{r}
 # Function to compute posterior density up to a constant
 post <- function(theta, y, X) {
@@ -107,11 +120,18 @@ post <- function(theta, y, X) {
 Xtest <- cbind(1, 18:25, rep(c(0, 1), 4), rep(c(1, 1, 0, 0), 2))
 ytest <- c(rep(TRUE, 4), rep(FALSE, 4))
 # do the exponential to get it back in terms of likelihood
-exp(post(c(260, -10, 10, -20), ytest, Xtest)) / exp(post(c(270, -15, 15, -25), ytest , Xtest))
+exp(post(c(260, -10, 10, -20), ytest, Xtest)) / exp(post(c(270, -15, 15, -25), 
+                                                         ytest , Xtest))
 ```
+This is the same result as expected, which proves that our procedure is correct.
+
 ## Task 3
 
-The Metropolis-Hastings algorithm generates a sequence of samples that approximate the posterior distribution - constructs a Markov chain — a sequence of parameter values where each value only depends on the previous one. After many iterations: Over time, the sequence of theta values will approximate the posterior distribution.
+The Metropolis-Hastings algorithm generates a sequence of samples that 
+approximate the posterior distribution - constructs a Markov chain — a sequence 
+of parameter values where each value only depends on the previous one. After 
+many iterations: Over time, the sequence of theta values will approximate the 
+posterior distribution.
 
 ```{r}
 mh_algorithm <- function(theta, y, X, sigma, n_iter = 10000) {
@@ -155,25 +175,29 @@ mle_val <- NR(coef(modell), 10, y, X)
 mle_se <- summary(modell)$coefficients[,"Std. Error"]
 
 # Run the Metropolis-Hastings algorithm
-posterior_samples <- mh_algorithm(mle_val, data_individ$Resultat, X, mle_se, n_iter = 10000)
+posterior_samples <- mh_algorithm(mle_val, data_individ$Resultat, X, mle_se, 
+                                  n_iter = 10000)
 ```
 
 ```{r}
 par(mfrow = c(2, 2))  # 2x2 grid for plots
 for (i in 1:ncol(posterior_samples)) {
-  plot(posterior_samples[, i], type = "l", main = paste("Trace of theta[", i, "]", sep=""))
+  plot(posterior_samples[, i], type = "l", 
+       main = paste("Trace of theta[", i, "]", sep=""))
 }
 ```
 ```{r}
 par(mfrow = c(2, 2))  # 2x2 grid for plots
 for (i in 1:ncol(posterior_samples)) {
-  hist(posterior_samples[, i], breaks = 30, main = paste("Posterior of theta[", i, "]", sep=""), xlab = "")
+  hist(posterior_samples[, i], breaks = 30, 
+       main = paste("Posterior of theta[", i, "]", sep=""), xlab = "")
 }
 ```
 
 ```{r}
 posterior_means <- colMeans(posterior_samples)
-cred_intervals <- apply(posterior_samples, 2, function(x) quantile(x, probs = c(0.025, 0.975)))
+cred_intervals <- apply(posterior_samples, 2, function(x) quantile(x, 
+                                                    probs = c(0.025, 0.975)))
 
 posterior_means  # Posterior means
 cred_intervals  # 95% credible intervals using quantiles
